@@ -16,19 +16,31 @@ sealed class Program
         builder.Logging.ClearProviders();
         builder.Logging.AddConsole();
 
-        // Add Sentry logging with configuration
-        builder.Logging.AddSentry(o =>
+        // Add Sentry logging if DSN is configured
+        string? sentryDsn = Environment.GetEnvironmentVariable("SENTRY_DSN");
+        if (!string.IsNullOrWhiteSpace(sentryDsn))
         {
-            o.Dsn = "https://82c12a7f9520219b0fe9f91ac1d14b37@o4509369388761088.ingest.us.sentry.io/4509576978235392";
-            o.Environment = Environment.GetEnvironmentVariable("ENVIRONMENT") ?? "development";
-            o.TracesSampleRate = 0.1; // 10% of transactions for performance monitoring
-            o.ProfilesSampleRate = 0.1; // 10% for profiling
-            o.AutoSessionTracking = true;
-            o.AttachStacktrace = true;
-            o.SendDefaultPii = false; // Don't send personally identifiable information
-            o.MaxBreadcrumbs = 100;
-            o.Release = "avalonia-mcp@1.0.0";
-        });
+            // Basic DSN format validation
+            if (sentryDsn.StartsWith("https://") && sentryDsn.Contains("@") && sentryDsn.Contains(".ingest."))
+            {
+                builder.Logging.AddSentry(o =>
+                {
+                    o.Dsn = sentryDsn;
+                    o.Environment = Environment.GetEnvironmentVariable("ENVIRONMENT") ?? "development";
+                    o.TracesSampleRate = 0.1; // 10% of transactions for performance monitoring
+                    o.ProfilesSampleRate = 0.1; // 10% for profiling
+                    o.AutoSessionTracking = true;
+                    o.AttachStacktrace = true;
+                    o.SendDefaultPii = false; // Don't send personally identifiable information
+                    o.MaxBreadcrumbs = 100;
+                    o.Release = "avalonia-mcp@1.0.0";
+                });
+            }
+            else
+            {
+                Console.WriteLine("Warning: SENTRY_DSN is set but appears to be invalid. Skipping Sentry integration.");
+            }
+        }
 
         // Set log levels based on environment
         LogLevel logLevel = Environment.GetEnvironmentVariable("AVALONIA_MCP_LOG_LEVEL") switch
@@ -61,15 +73,18 @@ sealed class Program
         ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
         // Record server startup
+        bool sentryEnabled = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("SENTRY_DSN"));
         telemetry.RecordServerEvent("startup", new Dictionary<string, object>
         {
             ["version"] = "1.0.0",
             ["environment"] = Environment.GetEnvironmentVariable("ENVIRONMENT") ?? "development",
             ["log_level"] = logLevel.ToString(),
+            ["sentry_enabled"] = sentryEnabled,
             ["startup_time"] = DateTimeOffset.UtcNow
         });
 
-        logger.LogInformation("AvaloniaUI MCP Server starting up - Version: 1.0.0, LogLevel: {LogLevel}", logLevel);
+        logger.LogInformation("AvaloniaUI MCP Server starting up - Version: 1.0.0, LogLevel: {LogLevel}, Sentry: {SentryStatus}",
+            logLevel, sentryEnabled ? "Enabled" : "Disabled");
 
         // Preload common resources into cache for better performance
         try
