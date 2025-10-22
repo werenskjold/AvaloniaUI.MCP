@@ -68,6 +68,8 @@ dotnet run --project src/AvaloniaUI.MCP/AvaloniaUI.MCP.csproj
 
 ### Configuration
 
+#### MCP Client Configuration
+
 Add to your MCP client configuration:
 
 ```json
@@ -80,10 +82,32 @@ Add to your MCP client configuration:
         "--project",
         "/path/to/AvaloniaUI.MCP/src/AvaloniaUI.MCP/AvaloniaUI.MCP.csproj"
       ],
-      "cwd": "/path/to/AvaloniaUI.MCP"
+      "cwd": "/path/to/AvaloniaUI.MCP",
+      "env": {
+        "SENTRY_DSN": "https://your-sentry-dsn@o123456.ingest.sentry.io/123456",
+        "ENVIRONMENT": "production",
+        "AVALONIA_MCP_LOG_LEVEL": "Information"
+      }
     }
   }
 }
+```
+
+#### Environment Variables
+
+The server can be configured using environment variables (all optional):
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SENTRY_DSN` | Sentry error tracking DSN. If not set, Sentry integration is disabled. | (disabled) |
+| `ENVIRONMENT` | Environment name (development, staging, production) | `development` |
+| `AVALONIA_MCP_LOG_LEVEL` | Log level (Trace, Debug, Information, Warning, Error, Critical) | `Information` |
+
+Copy `.env.example` to `.env` and configure as needed:
+
+```bash
+cp .env.example .env
+# Edit .env with your configuration
 ```
 
 ### First Commands

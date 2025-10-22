@@ -2,6 +2,15 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+
+    <!-- Package Metadata -->
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/werenskjold/AvaloniaUI.MCP</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/werenskjold/AvaloniaUI.MCP</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Description>Professional Model Context Protocol Server for AvaloniaUI Development</Description>
+    <Authors>AvaloniaUI.MCP Contributors</Authors>
+    <Copyright>Copyright (c) 2025 AvaloniaUI.MCP Contributors</Copyright>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,7 +1,16 @@
 ﻿namespace AvaloniaUI.MCP.Services;
 
 /// <summary>
-/// Provides async file operations for improved performance and responsiveness
+/// Provides async file operations for improved performance and responsiveness.
+///
+/// IMPORTANT: This service is designed for truly asynchronous scenarios such as:
+/// - Resource loading during server startup
+/// - Background file processing tasks
+/// - Operations that can run concurrently without blocking
+///
+/// DO NOT use this service for MCP tools, which must be synchronous.
+/// Use standard synchronous File operations (File.WriteAllText, File.ReadAllText, etc.)
+/// for MCP tools to avoid blocking with .Wait() or .Result which defeats the purpose of async.
 /// </summary>
 public static class AsyncFileService
 {

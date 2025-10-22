@@ -80,6 +80,14 @@ dotnet build
 dotnet run --project src/AvaloniaUI.MCP/AvaloniaUI.MCP.csproj
 ```
 
+### Configuration
+The server uses environment variables for configuration (all optional):
+- `SENTRY_DSN` - Sentry error tracking DSN (if not set, Sentry is disabled)
+- `ENVIRONMENT` - Environment name (development/staging/production, default: development)
+- `AVALONIA_MCP_LOG_LEVEL` - Log level (Trace/Debug/Information/Warning/Error/Critical, default: Information)
+
+See `.env.example` for configuration template.
+
 ### Testing
 ```bash
 dotnet test

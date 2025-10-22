@@ -16,19 +16,34 @@ sealed class Program
         builder.Logging.ClearProviders();
         builder.Logging.AddConsole();
 
-        // Add Sentry logging with configuration
-        builder.Logging.AddSentry(o =>
+        // Add Sentry logging if DSN is configured and valid
+        bool sentryConfigured = false;
+        string? sentryDsn = Environment.GetEnvironmentVariable("SENTRY_DSN");
+        if (!string.IsNullOrWhiteSpace(sentryDsn))
         {
-            o.Dsn = "https://82c12a7f9520219b0fe9f91ac1d14b37@o4509369388761088.ingest.us.sentry.io/4509576978235392";
-            o.Environment = Environment.GetEnvironmentVariable("ENVIRONMENT") ?? "development";
-            o.TracesSampleRate = 0.1; // 10% of transactions for performance monitoring
-            o.ProfilesSampleRate = 0.1; // 10% for profiling
-            o.AutoSessionTracking = true;
-            o.AttachStacktrace = true;
-            o.SendDefaultPii = false; // Don't send personally identifiable information
-            o.MaxBreadcrumbs = 100;
-            o.Release = "avalonia-mcp@1.0.0";
-        });
+            // Basic DSN format validation
+            if (IsValidSentryDsn(sentryDsn))
+            {
+                builder.Logging.AddSentry(o =>
+                {
+                    o.Dsn = sentryDsn;
+                    o.Environment = Environment.GetEnvironmentVariable("ENVIRONMENT") ?? "development";
+                    o.TracesSampleRate = 0.1; // 10% of transactions for performance monitoring
+                    o.ProfilesSampleRate = 0.1; // 10% for profiling
+                    o.AutoSessionTracking = true;
+                    o.AttachStacktrace = true;
+                    o.SendDefaultPii = false; // Don't send personally identifiable information
+                    o.MaxBreadcrumbs = 100;
+                    o.Release = "avalonia-mcp@1.0.0";
+                });
+                sentryConfigured = true;
+            }
+            else
+            {
+                // Note: Will log properly through ILogger after host is built
+                Console.WriteLine("Warning: SENTRY_DSN is set but appears to be invalid. Skipping Sentry integration.");
+            }
+        }
 
         // Set log levels based on environment
         LogLevel logLevel = Environment.GetEnvironmentVariable("AVALONIA_MCP_LOG_LEVEL") switch
@@ -60,16 +75,24 @@ sealed class Program
         ITelemetryService telemetry = host.Services.GetRequiredService<ITelemetryService>();
         ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
+        // Log invalid DSN warning if applicable (now that logger is available)
+        if (!string.IsNullOrWhiteSpace(sentryDsn) && !sentryConfigured)
+        {
+            logger.LogWarning("SENTRY_DSN environment variable is set but has invalid format. Sentry integration disabled. Expected format: https://key@organization.ingest.sentry.io/project");
+        }
+
         // Record server startup
         telemetry.RecordServerEvent("startup", new Dictionary<string, object>
         {
             ["version"] = "1.0.0",
             ["environment"] = Environment.GetEnvironmentVariable("ENVIRONMENT") ?? "development",
             ["log_level"] = logLevel.ToString(),
+            ["sentry_enabled"] = sentryConfigured,
             ["startup_time"] = DateTimeOffset.UtcNow
         });
 
-        logger.LogInformation("AvaloniaUI MCP Server starting up - Version: 1.0.0, LogLevel: {LogLevel}", logLevel);
+        logger.LogInformation("AvaloniaUI MCP Server starting up - Version: 1.0.0, LogLevel: {LogLevel}, Sentry: {SentryStatus}",
+            logLevel, sentryConfigured ? "Enabled" : "Disabled");
 
         // Preload common resources into cache for better performance
         try
@@ -138,5 +161,36 @@ sealed class Program
 
             logger.LogInformation("AvaloniaUI MCP Server shutdown complete");
         }
+    }
+
+    /// <summary>
+    /// Validates Sentry DSN format.
+    /// Expected format: https://key@organization.ingest.sentry.io/project
+    /// </summary>
+    static bool IsValidSentryDsn(string dsn)
+    {
+        if (string.IsNullOrWhiteSpace(dsn))
+            return false;
+
+        if (!Uri.TryCreate(dsn, UriKind.Absolute, out var uri))
+            return false;
+
+        // Check scheme
+        if (!string.Equals(uri.Scheme, "https", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Check user info (key)
+        if (string.IsNullOrWhiteSpace(uri.UserInfo))
+            return false;
+
+        // Check host contains ".ingest.sentry.io"
+        if (uri.Host == null || !uri.Host.Contains(".ingest.sentry.io", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Check path (project id)
+        if (string.IsNullOrWhiteSpace(uri.AbsolutePath) || uri.AbsolutePath == "/")
+            return false;
+
+        return true;
     }
 }

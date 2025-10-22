@@ -68,30 +68,40 @@ public static class ProjectGeneratorTool
 
     static string GenerateMvvmProject(string projectPath, string projectName, string platforms)
     {
-        // Generate all file contents first
-        var filesToCreate = new List<(string FilePath, string Content)>
-        {
-            (Path.Combine(projectPath, $"{projectName}.csproj"), GenerateProjectFile(projectName, platforms, true)),
-            (Path.Combine(projectPath, "App.axaml"), GenerateAppXaml(projectName)),
-            (Path.Combine(projectPath, "App.axaml.cs"), GenerateAppCode(projectName)),
-            (Path.Combine(projectPath, "MainWindow.axaml"), GenerateMainWindowXaml(projectName)),
-            (Path.Combine(projectPath, "MainWindow.axaml.cs"), GenerateMainWindowCode(projectName)),
-            (Path.Combine(projectPath, "Program.cs"), GenerateProgramCs(projectName))
-        };
+        // Create project file
+        string projectFile = GenerateProjectFile(projectName, platforms, true);
+        File.WriteAllText(Path.Combine(projectPath, $"{projectName}.csproj"), projectFile);
+
+        // Create App.axaml
+        string appXaml = GenerateAppXaml(projectName);
+        File.WriteAllText(Path.Combine(projectPath, "App.axaml"), appXaml);
+
+        // Create App.axaml.cs
+        string appCode = GenerateAppCode(projectName);
+        File.WriteAllText(Path.Combine(projectPath, "App.axaml.cs"), appCode);
+
+        // Create MainWindow.axaml
+        string mainWindowXaml = GenerateMainWindowXaml(projectName);
+        File.WriteAllText(Path.Combine(projectPath, "MainWindow.axaml"), mainWindowXaml);
+
+        // Create MainWindow.axaml.cs
+        string mainWindowCode = GenerateMainWindowCode(projectName);
+        File.WriteAllText(Path.Combine(projectPath, "MainWindow.axaml.cs"), mainWindowCode);
+
+        // Create Program.cs
+        string programCs = GenerateProgramCs(projectName);
+        File.WriteAllText(Path.Combine(projectPath, "Program.cs"), programCs);
 
         // Create ViewModels directory
         string viewModelsDir = Path.Combine(projectPath, "ViewModels");
+        Directory.CreateDirectory(viewModelsDir);
 
-        // Add ViewModel files
-        filesToCreate.AddRange(
-        [
-            (Path.Combine(viewModelsDir, "MainWindowViewModel.cs"), GenerateMainWindowViewModel(projectName)),
-            (Path.Combine(viewModelsDir, "ViewModelBase.cs"), GenerateViewModelBase(projectName))
-        ]);
+        // Create ViewModel files
+        string mainViewModel = GenerateMainWindowViewModel(projectName);
+        File.WriteAllText(Path.Combine(viewModelsDir, "MainWindowViewModel.cs"), mainViewModel);
 
-        // Write all files asynchronously in parallel for better performance
-        Task writeTask = AsyncFileService.WriteAllFilesAsync(filesToCreate);
-        writeTask.Wait(); // Wait for completion since MCP tools must be synchronous
+        string viewModelBase = GenerateViewModelBase(projectName);
+        File.WriteAllText(Path.Combine(viewModelsDir, "ViewModelBase.cs"), viewModelBase);
 
         return $"Successfully created MVVM AvaloniaUI project '{projectName}' at '{projectPath}'\\n" +
                $"Platform support: {platforms}\\n" +

@@ -119,28 +119,36 @@ public static class XamlValidationTool
                 "https://github.com/avaloniaui");
             conversionNotes.Add("✓ Replaced WPF presentation namespace with AvaloniaUI namespace");
 
-            // 2. Replace common WPF-specific elements with AvaloniaUI equivalents
+            // 2. Replace WPF-specific patterns with AvaloniaUI equivalents
             var replacements = new Dictionary<string, string>
             {
-                // Window properties
-                { "WindowState=\"Maximized\"", "WindowState=\"Maximized\"" }, // Same in Avalonia
-                { "WindowStartupLocation=\"CenterScreen\"", "WindowStartupLocation=\"CenterScreen\"" }, // Same in Avalonia
+                // FindAncestor RelativeSource conversions
+                { "RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}", "$parent[Window]" },
+                { "RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type UserControl}}", "$parent[UserControl]" },
+                { "RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Grid}}", "$parent[Grid]" },
+                { "RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type StackPanel}}", "$parent[StackPanel]" },
 
-                // Replace WPF-specific controls
-                { "<DataGrid", "<DataGrid" }, // Available in Avalonia
-                { "<TabControl", "<TabControl" }, // Available in Avalonia
-                { "<TreeView", "<TreeView" }, // Available in Avalonia
+                // Attached property conversions
+                { "Grid.IsSharedSizeScope=\"True\"", "Grid.IsSharedSizeScope=\"True\"" }, // Supported but less common
+                { "DockPanel.Dock=", "DockPanel.Dock=" }, // Same syntax
 
-                // Replace bindings (mostly compatible)
-                { "RelativeSource={RelativeSource Self}", "RelativeSource={RelativeSource Self}" },
+                // Thickness constructors - AvaloniaUI uses same syntax
+                // Event handlers - AvaloniaUI uses same attribute syntax
             };
 
+            int conversionCount = 0;
             foreach (KeyValuePair<string, string> replacement in replacements)
             {
-                if (convertedXaml.Contains(replacement.Key))
+                if (convertedXaml.Contains(replacement.Key) && replacement.Key != replacement.Value)
                 {
                     convertedXaml = convertedXaml.Replace(replacement.Key, replacement.Value);
+                    conversionCount++;
                 }
+            }
+
+            if (conversionCount > 0)
+            {
+                conversionNotes.Add($"✓ Applied {conversionCount} automatic conversion(s) for WPF-specific patterns");
             }
 
             // 3. Check for potential issues that need manual attention
@@ -148,22 +156,32 @@ public static class XamlValidationTool
 
             if (convertedXaml.Contains("DependencyProperty"))
             {
-                manualAttentionItems.Add("⚠ DependencyProperty usage detected - may need conversion to AvaloniaProperty");
+                manualAttentionItems.Add("⚠ DependencyProperty usage detected - Convert to AvaloniaProperty (see: https://docs.avaloniaui.net/docs/guides/custom-controls/defining-properties)");
             }
 
             if (convertedXaml.Contains("RoutedCommand"))
             {
-                manualAttentionItems.Add("⚠ RoutedCommand usage detected - consider using ReactiveCommand instead");
+                manualAttentionItems.Add("⚠ RoutedCommand usage detected - Use ReactiveCommand from ReactiveUI instead");
             }
 
-            if (convertedXaml.Contains("Trigger"))
+            if (convertedXaml.Contains("<Trigger") || convertedXaml.Contains("<DataTrigger") || convertedXaml.Contains("<EventTrigger"))
             {
-                manualAttentionItems.Add("⚠ Trigger usage detected - AvaloniaUI uses different styling approach");
+                manualAttentionItems.Add("⚠ Trigger usage detected - Replace with AvaloniaUI Styles and Pseudo-classes (e.g., :pointerover, :pressed)");
             }
 
             if (convertedXaml.Contains("ControlTemplate"))
             {
-                manualAttentionItems.Add("⚠ ControlTemplate detected - verify compatibility with AvaloniaUI templating");
+                manualAttentionItems.Add("⚠ ControlTemplate detected - Verify TemplateBinding and ContentPresenter compatibility");
+            }
+
+            if (convertedXaml.Contains("RelativeSource={RelativeSource FindAncestor"))
+            {
+                manualAttentionItems.Add("⚠ FindAncestor RelativeSource pattern detected - May need manual conversion to $parent syntax");
+            }
+
+            if (convertedXaml.Contains("MultiDataTrigger") || convertedXaml.Contains("Setter.TargetName"))
+            {
+                manualAttentionItems.Add("⚠ Advanced WPF styling patterns detected - Requires manual conversion to AvaloniaUI style system");
             }
 
             // 4. Validate the converted XAML
@@ -191,7 +209,9 @@ public static class XamlValidationTool
     static void ValidateAvaloniaSpecificIssues(XDocument doc, List<string> validationResult, string validationLevel, ref bool hasErrors)
     {
         // Check for unsupported WPF elements
-        string[] wpfOnlyElements = ["DockPanel", "UniformGrid", "Viewbox"];
+        // Note: DockPanel, UniformGrid, and Viewbox ARE available in AvaloniaUI
+        // Common WPF-only elements include: DocumentViewer, FlowDocument, FlowDocumentScrollViewer, etc.
+        string[] wpfOnlyElements = ["DocumentViewer", "FlowDocument", "FlowDocumentScrollViewer", "FlowDocumentReader"];
         foreach (string? element in wpfOnlyElements)
         {
             if (doc.Descendants().Any(e => e.Name.LocalName == element))
