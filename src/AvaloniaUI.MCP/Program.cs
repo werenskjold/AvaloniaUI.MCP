@@ -16,12 +16,13 @@ sealed class Program
         builder.Logging.ClearProviders();
         builder.Logging.AddConsole();
 
-        // Add Sentry logging if DSN is configured
+        // Add Sentry logging if DSN is configured and valid
+        bool sentryConfigured = false;
         string? sentryDsn = Environment.GetEnvironmentVariable("SENTRY_DSN");
         if (!string.IsNullOrWhiteSpace(sentryDsn))
         {
             // Basic DSN format validation
-            if (sentryDsn.StartsWith("https://") && sentryDsn.Contains("@") && sentryDsn.Contains(".ingest."))
+            if (IsValidSentryDsn(sentryDsn))
             {
                 builder.Logging.AddSentry(o =>
                 {
@@ -35,9 +36,11 @@ sealed class Program
                     o.MaxBreadcrumbs = 100;
                     o.Release = "avalonia-mcp@1.0.0";
                 });
+                sentryConfigured = true;
             }
             else
             {
+                // Note: Will log properly through ILogger after host is built
                 Console.WriteLine("Warning: SENTRY_DSN is set but appears to be invalid. Skipping Sentry integration.");
             }
         }
@@ -72,19 +75,24 @@ sealed class Program
         ITelemetryService telemetry = host.Services.GetRequiredService<ITelemetryService>();
         ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
+        // Log invalid DSN warning if applicable (now that logger is available)
+        if (!string.IsNullOrWhiteSpace(sentryDsn) && !sentryConfigured)
+        {
+            logger.LogWarning("SENTRY_DSN environment variable is set but has invalid format. Sentry integration disabled. Expected format: https://key@organization.ingest.sentry.io/project");
+        }
+
         // Record server startup
-        bool sentryEnabled = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("SENTRY_DSN"));
         telemetry.RecordServerEvent("startup", new Dictionary<string, object>
         {
             ["version"] = "1.0.0",
             ["environment"] = Environment.GetEnvironmentVariable("ENVIRONMENT") ?? "development",
             ["log_level"] = logLevel.ToString(),
-            ["sentry_enabled"] = sentryEnabled,
+            ["sentry_enabled"] = sentryConfigured,
             ["startup_time"] = DateTimeOffset.UtcNow
         });
 
         logger.LogInformation("AvaloniaUI MCP Server starting up - Version: 1.0.0, LogLevel: {LogLevel}, Sentry: {SentryStatus}",
-            logLevel, sentryEnabled ? "Enabled" : "Disabled");
+            logLevel, sentryConfigured ? "Enabled" : "Disabled");
 
         // Preload common resources into cache for better performance
         try
@@ -154,4 +162,11 @@ sealed class Program
             logger.LogInformation("AvaloniaUI MCP Server shutdown complete");
         }
     }
+
+    /// <summary>
+    /// Validates Sentry DSN format.
+    /// Expected format: https://key@organization.ingest.sentry.io/project
+    /// </summary>
+    static bool IsValidSentryDsn(string dsn) =>
+        dsn.StartsWith("https://") && dsn.Contains("@") && dsn.Contains(".ingest.");
 }
