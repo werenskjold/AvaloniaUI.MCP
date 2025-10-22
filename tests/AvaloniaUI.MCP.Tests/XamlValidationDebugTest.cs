@@ -208,7 +208,7 @@ public class XamlValidationDebugTest
     }
 
     [TestMethod]
-    public void WpfConversion_MultipleFinAncestors_AllConverted()
+    public void WpfConversion_MultipleFindAncestors_AllConverted()
     {
         // Arrange - Multiple FindAncestor patterns
         string wpfXaml = @"<Window xmlns=""http://schemas.microsoft.com/winfx/2006/xaml/presentation""
