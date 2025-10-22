@@ -167,6 +167,30 @@ sealed class Program
     /// Validates Sentry DSN format.
     /// Expected format: https://key@organization.ingest.sentry.io/project
     /// </summary>
-    static bool IsValidSentryDsn(string dsn) =>
-        dsn.StartsWith("https://") && dsn.Contains("@") && dsn.Contains(".ingest.");
+    static bool IsValidSentryDsn(string dsn)
+    {
+        if (string.IsNullOrWhiteSpace(dsn))
+            return false;
+
+        if (!Uri.TryCreate(dsn, UriKind.Absolute, out var uri))
+            return false;
+
+        // Check scheme
+        if (!string.Equals(uri.Scheme, "https", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Check user info (key)
+        if (string.IsNullOrWhiteSpace(uri.UserInfo))
+            return false;
+
+        // Check host contains ".ingest.sentry.io"
+        if (uri.Host == null || !uri.Host.Contains(".ingest.sentry.io", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Check path (project id)
+        if (string.IsNullOrWhiteSpace(uri.AbsolutePath) || uri.AbsolutePath == "/")
+            return false;
+
+        return true;
+    }
 }
