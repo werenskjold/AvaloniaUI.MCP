@@ -1,0 +1,244 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PubNubChatDemo.ViewModels"
+        xmlns:models="using:PubNubChatDemo.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+        x:Class="PubNubChatDemo.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="PubNub Chat - Avalonia Demo"
+        Width="1000" Height="700"
+        MinWidth="800" MinHeight="600">
+
+    <Design.DataContext>
+        <vm:MainViewModel/>
+    </Design.DataContext>
+
+    <Window.Styles>
+        <!-- Message bubble styles -->
+        <Style Selector="Border.message-bubble">
+            <Setter Property="Background" Value="#E3F2FD"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Margin" Value="8,4"/>
+            <Setter Property="MaxWidth" Value="500"/>
+        </Style>
+
+        <Style Selector="Border.message-bubble.own">
+            <Setter Property="Background" Value="#1976D2"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+        </Style>
+
+        <Style Selector="Border.message-bubble.other">
+            <Setter Property="Background" Value="#F5F5F5"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+
+        <Style Selector="TextBlock.message-text">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+
+        <Style Selector="TextBlock.message-text.own">
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <Style Selector="TextBlock.message-username">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+
+        <Style Selector="TextBlock.message-time">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="Margin" Value="0,4,0,0"/>
+        </Style>
+
+        <Style Selector="Border.user-item">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Margin" Value="4,2"/>
+            <Setter Property="CornerRadius" Value="8"/>
+        </Style>
+
+        <Style Selector="Border.user-item:pointerover">
+            <Setter Property="Background" Value="#F5F5F5"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#1976D2" Padding="16,12">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="PubNub Real-Time Chat"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               Foreground="White"/>
+                    <TextBlock Text="{Binding StatusMessage}"
+                               FontSize="12"
+                               Foreground="#B3E5FC"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding Username}"
+                               VerticalAlignment="Center"
+                               FontWeight="SemiBold"
+                               Foreground="White"/>
+                    <Ellipse Width="12" Height="12"
+                             Fill="#4CAF50"
+                             IsVisible="{Binding IsConnected}"
+                             VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,250">
+            <!-- Chat Area -->
+            <Grid Grid.Column="0" RowDefinitions="*,Auto" Margin="0,0,1,0">
+                <!-- Messages List -->
+                <ScrollViewer Grid.Row="0" Name="MessageScrollViewer">
+                    <ItemsControl ItemsSource="{Binding Messages}" Padding="16">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:ChatMessage">
+                                <Border Classes.message-bubble="True"
+                                        Classes.own="{Binding IsOwnMessage}"
+                                        Classes.other="{Binding !IsOwnMessage}">
+                                    <StackPanel>
+                                        <!-- Username and Avatar (only for other messages) -->
+                                        <StackPanel Orientation="Horizontal"
+                                                    IsVisible="{Binding !IsOwnMessage}">
+                                            <TextBlock Text="{Binding Avatar}"
+                                                       FontSize="16"
+                                                       Margin="0,0,8,0"/>
+                                            <TextBlock Text="{Binding Username}"
+                                                       Classes="message-username"
+                                                       Foreground="#1976D2"/>
+                                        </StackPanel>
+
+                                        <!-- Message Text -->
+                                        <TextBlock Text="{Binding Message}"
+                                                   Classes.message-text="True"
+                                                   Classes.own="{Binding IsOwnMessage}"/>
+
+                                        <!-- Timestamp -->
+                                        <TextBlock Text="{Binding TimeFormatted}"
+                                                   Classes="message-time"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- Message Input -->
+                <Border Grid.Row="1"
+                        Background="#FAFAFA"
+                        BorderBrush="#E0E0E0"
+                        BorderThickness="0,1,0,0"
+                        Padding="16">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding CurrentMessage}"
+                                 Watermark="Type your message..."
+                                 VerticalContentAlignment="Center"
+                                 MinHeight="40"
+                                 Padding="12,8"
+                                 IsEnabled="{Binding IsConnected}"
+                                 CornerRadius="20">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Enter" Command="{Binding SendMessageCommand}"/>
+                            </TextBox.KeyBindings>
+                        </TextBox>
+
+                        <Button Grid.Column="1"
+                                Content="Send"
+                                Command="{Binding SendMessageCommand}"
+                                IsEnabled="{Binding IsConnected}"
+                                Background="#1976D2"
+                                Foreground="White"
+                                MinWidth="100"
+                                Height="40"
+                                Margin="8,0,0,0"
+                                CornerRadius="20"
+                                FontWeight="SemiBold"/>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Online Users Panel -->
+            <Border Grid.Column="1"
+                    Background="#F9F9F9"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1,0,0,0"
+                    Padding="16">
+                <StackPanel>
+                    <TextBlock Text="Online Users"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,12"/>
+
+                    <TextBlock Text="{Binding OnlineUsers.Count, StringFormat='{}{0} online'}"
+                               FontSize="12"
+                               Foreground="#666"
+                               Margin="0,0,0,16"/>
+
+                    <ScrollViewer MaxHeight="600">
+                        <ItemsControl ItemsSource="{Binding OnlineUsers}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:UserPresence">
+                                    <Border Classes="user-item">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding Avatar}"
+                                                       FontSize="20"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,12,0"/>
+
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Username}"
+                                                       FontSize="14"
+                                                       VerticalAlignment="Center"/>
+
+                                            <Ellipse Grid.Column="2"
+                                                     Width="8"
+                                                     Height="8"
+                                                     Fill="#4CAF50"
+                                                     VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2"
+                Background="#EEEEEE"
+                BorderBrush="#E0E0E0"
+                BorderThickness="0,1,0,0"
+                Padding="16,8">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="Powered by PubNub • Built with Avalonia UI"
+                           FontSize="11"
+                           Foreground="#666"
+                           VerticalAlignment="Center"/>
+
+                <TextBlock Grid.Column="1"
+                           Text="{Binding Messages.Count, StringFormat='{}{0} messages'}"
+                           FontSize="11"
+                           Foreground="#666"
+                           VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

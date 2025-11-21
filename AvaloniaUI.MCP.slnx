@@ -15,5 +15,6 @@
     <File Path="_config.yml" />
   </Folder>
   <Project Path="src/AvaloniaUI.MCP/AvaloniaUI.MCP.csproj" />
+  <Project Path="src/PubNubChatDemo/PubNubChatDemo.csproj" />
   <Project Path="tests/AvaloniaUI.MCP.Tests/AvaloniaUI.MCP.Tests.csproj" />
 </Solution>
